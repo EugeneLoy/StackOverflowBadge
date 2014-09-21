@@ -9,7 +9,7 @@ import play.api.libs.ws.{Response, WS}
 import scala.io.Source
 
 case class UnexpectedApiResponse(val code: Int, val content: String)
-  extends Exception(s"Unexpected responce. Code: ${code}. Content: ${content.toString}")
+  extends Exception(s"Unexpected response. Code: ${code}. Content: ${content.toString}")
 
 object StackOverflowApi {
 
@@ -21,9 +21,9 @@ object StackOverflowApi {
   val COMMON_PAGESIZE = ("pagesize", COMMON_ITEMS_PER_PAGE.toString)
   val FILTER_TOTAL = ("filter", "total")
 
-  private def parseJson(responce: Response) = {
+  private def parseJson(response: Response) = {
     // TODO check, maybe there is a better way to do this:
-    val content = Source.fromInputStream(new GZIPInputStream(responce.ahcResponse.getResponseBodyAsStream)).getLines().mkString("\n")
+    val content = Source.fromInputStream(new GZIPInputStream(response.ahcResponse.getResponseBodyAsStream)).getLines().mkString("\n")
     Json.parse(content)
   }
 
