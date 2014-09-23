@@ -2,7 +2,7 @@ package controllers
 
 import akka.actor.{Props, ActorRef}
 import akka.util.Timeout
-import business.TempActor
+import core.TempActor
 import play.api.libs.json.JsValue
 import play.api.mvc._
 

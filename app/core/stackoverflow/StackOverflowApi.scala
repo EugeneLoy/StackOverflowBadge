@@ -1,4 +1,4 @@
-package business.stackoverflow
+package core.stackoverflow
 
 import java.util.zip.GZIPInputStream
 
@@ -7,9 +7,6 @@ import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import play.api.libs.json.{JsValue, Json}
 import play.api.libs.ws.{Response, WS}
 import scala.io.Source
-
-case class UnexpectedApiResponse(val code: Int, val content: String)
-  extends Exception(s"Unexpected response. Code: ${code}. Content: ${content.toString}")
 
 object StackOverflowApi {
 
@@ -27,9 +24,14 @@ object StackOverflowApi {
     Json.parse(content)
   }
 
+}
+class StackOverflowApi {
+
+  import StackOverflowApi._
+
   def get(path: String, params: (String, String)*) = {
     val query = API_KEY +: STACKOVERFLOW_SITE +: params
-    WS.url(STACKEXCHANGE_API_PATH + path).withQueryString(query:_*).get.map { response =>
+    WS.url(STACKEXCHANGE_API_PATH + path).withQueryString(query: _*).get.map { response =>
       (response.status, parseJson(response))
     }
   }

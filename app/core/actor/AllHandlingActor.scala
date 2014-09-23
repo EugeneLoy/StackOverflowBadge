@@ -1,4 +1,4 @@
-package business.actor
+package core.actor
 
 import akka.actor.{DeathPactException, Terminated, Actor}
 
