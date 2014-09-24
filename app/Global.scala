@@ -8,7 +8,7 @@ object Global extends GlobalSettings {
 
   override def onStart(app: Application) {
     implicit val application = app
-    Akka.system.actorOf(Props(new StackOverflowApiClient(new StackOverflowApi)), StackOverflowApiClient.ACTOR_NAME)
+    Akka.system.actorOf(StackOverflowApiClient.props, StackOverflowApiClient.ACTOR_NAME)
   }
 
 }

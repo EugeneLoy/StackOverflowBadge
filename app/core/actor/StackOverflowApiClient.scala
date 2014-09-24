@@ -27,6 +27,8 @@ object StackOverflowApiClient {
   case class Perform(request: Request, replyTo: ActorRef)
   case class Deliver(response: Response, to: ActorRef, originalRequest: Request)
 
+  def props = Props(new StackOverflowApiClient(new StackOverflowApi))
+
 }
 
 import StackOverflowApiClient._

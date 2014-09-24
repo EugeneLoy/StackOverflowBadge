@@ -18,13 +18,11 @@ import play.api.libs.concurrent.Execution.Implicits.defaultContext
 
 object Application extends Controller {
   
-  def index = Action {
-    Async {
-      val actor = Akka.system.actorOf(Props[TempActor])
-      implicit val timeout = Timeout(5.seconds)
-      (actor ? "start").mapTo[Any].map { response =>
-        Ok(response.toString)
-      }
+  def index = Action.async {
+    val actor = Akka.system.actorOf(Props[TempActor])
+    implicit val timeout = Timeout(10.seconds)
+    (actor ? "start").mapTo[Any].map { response =>
+      Ok(response.toString)
     }
   }
 
