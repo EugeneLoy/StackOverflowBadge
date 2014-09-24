@@ -17,6 +17,9 @@ object StackOverflowApiClient {
   val ACTOR_NAME = "stackOverflowApiClient"
   val ACTOR_PATH = s"../$ACTOR_NAME"
 
+  // see: https://api.stackexchange.com/docs/error-handling
+  val BACKOFF_ERROR_IDS = Set(502, 503)
+
   sealed trait State
   object Active extends State
   object BackingOff extends State
@@ -29,28 +32,17 @@ object StackOverflowApiClient {
   case class Perform(request: Request, replyTo: ActorRef)
   case class Deliver(response: Response, to: ActorRef, originalRequest: Request)
 
-  case class BackOff()
+  case class StopBackingOff()
 
-  def props = Props(classOf[StackOverflowApiClient], new StackOverflowApi, 1 msgsPer (100 milliseconds)).withDispatcher("stack-overflow-api-client-dispatcher")
-
-  def priorityGenerator = PriorityGenerator {
-    case _: BackOff => 0
-    case _: Perform => 1
-    case _: Request => 2
-    case _ => 3
-  }
+  def props = Props(classOf[StackOverflowApiClient], new StackOverflowApi, 1 msgsPer (100 milliseconds), 1 hour)
 
 }
 
 import StackOverflowApiClient._
 
-class StackOverflowApiClientMailbox(settings: ActorSystem.Settings, config: Config) extends UnboundedPriorityMailbox(priorityGenerator)
+class StackOverflowApiClient(api: StackOverflowApi, requestRate: Rate, backoffDuration: FiniteDuration) extends Actor with FSM[State, Unit] with Stash {
 
-class StackOverflowApiClient(api: StackOverflowApi, requestRate: Rate) extends Actor with FSM[State, Unit] {
-
-  val logger = Logger(this.getClass())
-
-  val throttler = context.actorOf(Props(classOf[TimerBasedThrottler], requestRate))
+  val throttler = context.actorOf(Props(classOf[TimerBasedThrottler], requestRate), "throttler")
   throttler ! SetTarget(Some(self))
 
   def wrapResponse(originalRequest: Request, replyTo: ActorRef)(rawApiResponse: (Int, JsValue)) = {
@@ -63,6 +55,18 @@ class StackOverflowApiClient(api: StackOverflowApi, requestRate: Rate) extends A
       api.get(path, params).map(wrapResponse(request, replyTo)).pipeTo(self)
   }
 
+  def isApiLimitsViolated(response: Response) = response match {
+    case Response(400, content) if (!(content \ "error_id").asOpt[Int].filter(BACKOFF_ERROR_IDS contains _).isEmpty) => true
+    case _ => false
+  }
+
+  def repeatLater(message: Any, sender: ActorRef) = {
+    // akka.actor.Stash is not capable of stashing arbitrary messages (only current ones)
+    // and there is no need to preserve requests order now, so lets just post message to itself, pretending
+    // that we are original message sender
+    self.tell(message, sender)
+  }
+
   startWith(Active, ())
 
   when(Active) {
@@ -72,22 +76,44 @@ class StackOverflowApiClient(api: StackOverflowApi, requestRate: Rate) extends A
     case Event(Perform(request, replyTo), _) =>
       perform(request, replyTo)
       stay
-    case Event(Deliver(response, to, originalRequest), _) =>
-      to ! response
-      // TODO handle backoff here
-      stay
-    case Event(BackOff(), _) =>
+    case Event(Deliver(response, originalSender, originalRequest), _) if (isApiLimitsViolated(response)) =>
+      repeatLater(originalRequest, originalSender)
       goto(BackingOff)
+    case Event(Deliver(response, to, _), _) =>
+      to ! response
+      stay
   }
 
   when(BackingOff) {
-    case _ => stay
+    case Event(request: Request, _) =>
+      stash
+      stay
+    case Event(Perform(request, originalSender), _) =>
+      repeatLater(request, originalSender)
+      stay
+    case Event(Deliver(response, originalSender, originalRequest), _) if (isApiLimitsViolated(response)) =>
+      repeatLater(originalRequest, originalSender)
+      stay
+    case Event(Deliver(response, to, _), _) =>
+      to ! response
+      stay
+    case Event(StopBackingOff(), _) =>
+      goto(Active)
   }
 
   whenUnhandled {
     case message =>
-      logger.error(s"Unexpected message: $message, state: $stateName")
+      log.error(s"Unexpected message: $message, state: $stateName")
       stay
+  }
+
+  onTransition {
+    case Active -> BackingOff =>
+      log.info("Starting backoff")
+      setTimer("backoff", StopBackingOff(), backoffDuration, false)
+    case BackingOff -> Active =>
+      log.info("Stopping backoff")
+      unstashAll()
   }
 
   initialize
