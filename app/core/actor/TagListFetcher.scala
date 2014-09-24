@@ -2,18 +2,39 @@ package core.actor
 
 import akka.actor.ActorRef
 import core.stackoverflow.StackOverflowApi
-import StackOverflowApiClient.Get
-import StackOverflowApi.FILTER_TOTAL
+import core.actor.StackOverflowApiClient.{Response, Get}
+import core.stackoverflow.StackOverflowApi._
 
-class TagListFetcher(recipient: ActorRef) extends AllHandlingActor {
+class TagListFetcher(apiClient: ActorRef) extends AllHandlingActor {
 
-  val client = context.actorSelection(StackOverflowApiClient.ACTOR_PATH)
-  client ! Get("tags", FILTER_TOTAL)
+  var pagesLeft = 0L
+  var tags: Seq[String] = Nil
 
-  def initial: Receive = {
-    case content =>
-      recipient ! content
+  apiClient ! Get("tags", FILTER_TOTAL)
+
+  def fetchingTotal: Receive = {
+    case Response(200, content) =>
+      val total = (content \ "total").as[Long]
+      pagesLeft = total / COMMON_ITEMS_PER_PAGE + 1
+      (1L to pagesLeft).foreach { page =>
+        apiClient ! Get("tags", COMMON_PAGESIZE, ("page", page.toString))
+      }
+      context.become(fetchingTags)
   }
 
-  override def receive: Receive = initial
+  def fetchingTags : Receive = {
+    case Response(200, content) =>
+      tags ++= (content \ "items" \\ "name").map(_.as[String])
+      pagesLeft -= 1
+      if (pagesLeft == 0) {
+        context.parent ! (tags.size, tags)
+        context.stop(self)
+      }
+
+  }
+
+  override def receive: Receive = fetchingTotal
+
+  // TODO timeouts responses from before restart
+
 }

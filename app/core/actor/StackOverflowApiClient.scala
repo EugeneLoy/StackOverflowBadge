@@ -34,7 +34,7 @@ object StackOverflowApiClient {
 
   case class StopBackingOff()
 
-  def props = Props(classOf[StackOverflowApiClient], new StackOverflowApi, 1 msgsPer (100 milliseconds), 1 hour)
+  def props = Props(classOf[StackOverflowApiClient], new StackOverflowApi, 1 msgsPer (500 milliseconds), 5 minutes)
 
 }
 
@@ -51,8 +51,8 @@ class StackOverflowApiClient(api: StackOverflowApi, requestRate: Rate, backoffDu
   }
 
   def perform(request: Request, replyTo: ActorRef) = request match {
-    case Get(path, params) =>
-      api.get(path, params).map(wrapResponse(request, replyTo)).pipeTo(self)
+    case Get(path, params @ _*) =>
+      api.get(path, params: _*).map(wrapResponse(request, replyTo)).pipeTo(self)
   }
 
   def isApiLimitsViolated(response: Response) = response match {

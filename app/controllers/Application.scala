@@ -20,8 +20,8 @@ object Application extends Controller {
   
   def index = Action.async {
     val actor = Akka.system.actorOf(Props[TempActor])
-    implicit val timeout = Timeout(10.seconds)
-    (actor ? "start").mapTo[Any].map { response =>
+    implicit val timeout = Timeout(1 hour)
+    (actor ? "").mapTo[Any].map { response =>
       Ok(response.toString)
     }
   }
