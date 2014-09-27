@@ -1,5 +1,7 @@
 package controllers
 
+import java.util.Date
+
 import akka.actor.{Props, ActorRef}
 import akka.util.Timeout
 import core.TempActor
@@ -17,7 +19,7 @@ import play.api.libs.concurrent.Execution.Implicits.defaultContext
 
 
 object Application extends Controller {
-  
+
   def index = Action.async {
     val actor = Akka.system.actorOf(Props[TempActor])
     implicit val timeout = Timeout(1 hour)
@@ -25,7 +27,5 @@ object Application extends Controller {
       Ok(response.toString)
     }
   }
-
-
 
 }

@@ -6,7 +6,9 @@ import core.actor.StackOverflowApiClient.{Response, Get}
 import core.stackoverflow.StackOverflowApi._
 
 object TagListFetcher {
-  case class Tags(tags: Seq[String])
+
+  case class TagsFetched(tags: Seq[String])
+
 }
 
 class TagListFetcher(apiClient: ActorRef) extends Actor with ActorLogging with RandomIdGenerator {
@@ -32,7 +34,7 @@ class TagListFetcher(apiClient: ActorRef) extends Actor with ActorLogging with R
       tags ++= (content \ "items" \\ "name").map(_.as[String])
       pendingRequests -= id
       if (pendingRequests.isEmpty) {
-        context.parent ! Tags(tags)
+        context.parent ! TagsFetched(tags)
         context.stop(self)
       }
   }
