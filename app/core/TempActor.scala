@@ -1,7 +1,7 @@
 package core
 
 import akka.actor.{Actor, ActorRef, Props}
-import core.actor.{StackOverflowApiClient, TagListFetcher}
+import core.actor.{TagStatsUpdater, StackOverflowApiClient, TagListFetcher}
 import concurrent.duration._
 import scala.concurrent.Await
 
@@ -12,7 +12,8 @@ class TempActor extends Actor {
 
   override def receive: Receive = {
     case "" =>
-      context.actorOf(Props(new TagListFetcher(apiClient)))
+      val a = context.actorOf(Props(new TagStatsUpdater(apiClient, "java")))
+      //a ! ""
       s = sender
     case message =>
       s ! message
