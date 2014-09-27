@@ -27,6 +27,17 @@ object StackOverflowApi {
     Json.parse(content)
   }
 
+  /**
+   * Find amount of pages needed to be queried to fetch all items, assuming COMMON_PAGESIZE used in api query.
+   *
+   * @param content response to api query with "total" filter
+   * @return amount of pages
+   */
+  def totalPages(content: JsValue) = {
+    val totalItems = (content \ "total").as[Long]
+    (totalItems / COMMON_ITEMS_PER_PAGE + 1)
+  }
+
 }
 class StackOverflowApi {
 

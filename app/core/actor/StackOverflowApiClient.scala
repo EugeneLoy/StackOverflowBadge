@@ -24,10 +24,12 @@ object StackOverflowApiClient {
   object Active extends State
   object BackingOff extends State
 
-  sealed trait Request
-  case class Get(path: String, params: (String, String)*) extends Request
+  sealed trait Request {
+    val id: String
+  }
+  case class Get(id: String, path: String, params: (String, String)*) extends Request
 
-  case class Response(code: Int, content: JsValue)
+  case class Response(id: String, code: Int, content: JsValue)
 
   case class Perform(request: Request, replyTo: ActorRef)
   case class Deliver(response: Response, to: ActorRef, originalRequest: Request)
@@ -38,25 +40,26 @@ object StackOverflowApiClient {
 
 }
 
-import StackOverflowApiClient._
 
-class StackOverflowApiClient(api: StackOverflowApi, requestRate: Rate, backoffDuration: FiniteDuration) extends Actor with FSM[State, Unit] with Stash {
+class StackOverflowApiClient(api: StackOverflowApi, requestRate: Rate, backoffDuration: FiniteDuration) extends Actor with FSM[StackOverflowApiClient.State, Unit] with Stash {
+
+  import StackOverflowApiClient._
 
   val throttler = context.actorOf(Props(classOf[TimerBasedThrottler], requestRate), "throttler")
   throttler ! SetTarget(Some(self))
 
   def wrapResponse(originalRequest: Request, replyTo: ActorRef)(rawApiResponse: (Int, JsValue)) = {
     val (code, content) = rawApiResponse
-    Deliver(Response(code, content), replyTo, originalRequest)
+    Deliver(Response(originalRequest.id, code, content), replyTo, originalRequest)
   }
 
   def perform(request: Request, replyTo: ActorRef) = request match {
-    case Get(path, params @ _*) =>
+    case Get(id, path, params @ _*) =>
       api.get(path, params: _*).map(wrapResponse(request, replyTo)).pipeTo(self)
   }
 
   def isApiLimitsViolated(response: Response) = response match {
-    case Response(400, content) if (!(content \ "error_id").asOpt[Int].filter(BACKOFF_ERROR_IDS contains _).isEmpty) => true
+    case Response(_, 400, content) if (!(content \ "error_id").asOpt[Int].filter(BACKOFF_ERROR_IDS contains _).isEmpty) => true
     case _ => false
   }
 

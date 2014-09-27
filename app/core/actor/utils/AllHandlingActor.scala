@@ -1,6 +1,6 @@
-package core.actor
+package core.actor.utils
 
-import akka.actor.{DeathPactException, Terminated, Actor}
+import akka.actor.{Actor, Terminated}
 
 /**
  * Base class for actors that either handle all passed messages or raise
