@@ -1,6 +1,9 @@
 package core.actor
 
-import akka.actor.{Actor, ActorLogging, ActorRef}
+import java.util.UUID
+
+import akka.actor.{Props, Actor, ActorLogging, ActorRef}
+import akka.remote.transport.ThrottlerTransportAdapter.Direction.Receive
 import core.actor.utils._
 import core.actor.StackOverflowApiClient.{Response, Get}
 import core.stackoverflow.StackOverflowApi._
@@ -9,11 +12,17 @@ object TagListFetcher {
 
   case class TagsFetched(tags: Seq[String])
 
+  def actorName = s"tag_list_fetcher_${UUID.randomUUID.toString}"
+
+  def props(apiClient: ActorRef) = Props(classOf[TagListFetcher], apiClient)
+
 }
 
 class TagListFetcher(apiClient: ActorRef) extends Actor with ActorLogging with RandomIdGenerator {
 
   import TagListFetcher._
+
+  context.watch(apiClient)
 
   var pendingRequests = Set.empty[String]
   var tags: Seq[String] = Nil
@@ -40,7 +49,11 @@ class TagListFetcher(apiClient: ActorRef) extends Actor with ActorLogging with R
   }
 
   override def unhandled(message: Any) = {
-    (logUnhandledResponses(log) orElse throwOnNonTerminated orElse PartialFunction(super.unhandled _))(message)
+    (
+      discardUnhandled(log)(classOf[Response])
+        orElse throwOnNonTerminated
+        orElse PartialFunction(super.unhandled _)
+    )(message)
   }
 
   override def receive: Receive = fetchingTotal(currentId)

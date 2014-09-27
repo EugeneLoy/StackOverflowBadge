@@ -1,11 +1,11 @@
-import java.util.Date
 
-/**
- * Created by leo on 27.09.2014.
- */
+import org.joda.time.DateTime
+
 package object models {
 
-  case class Tag(_id: String, total: Long, accepted: Long, updated: Date)
+  case class Tag(_id: String, total: Long, accepted: Long, rate: Double, updated: DateTime)
+
+  case class RateTops(_id: String, top10: Double, top20: Double, top30: Double, top40: Double, top50: Double, updated: DateTime)
 
   object JsonFormats {
 
@@ -15,6 +15,7 @@ package object models {
 
     // Generates Writes and Reads for Feed and User thanks to Json Macros
     implicit val tagFormat = Json.format[Tag]
+    implicit val rateTopsFormat = Json.format[RateTops]
 
   }
 

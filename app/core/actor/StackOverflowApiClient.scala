@@ -14,8 +14,7 @@ import play.api.libs.concurrent.Execution.Implicits.defaultContext
 
 object StackOverflowApiClient {
 
-  val ACTOR_NAME = "stackOverflowApiClient"
-  val ACTOR_PATH = s"../$ACTOR_NAME"
+  val ACTOR_NAME = "stackoverflow_api_client"
 
   // see: https://api.stackexchange.com/docs/error-handling
   val BACKOFF_ERROR_IDS = Set(502, 503)
