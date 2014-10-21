@@ -1,6 +1,6 @@
 package core.actor
 
-import java.util.UUID
+import java.util.UUID.randomUUID
 
 import akka.actor.{Props, ActorRef, Actor, ActorLogging}
 import core.actor.TagListFetcher.TagsFetched
@@ -20,7 +20,7 @@ object StatsUpdater {
   case class StatsUpdated()
   case class RateTopsPersisted(id: String)
 
-  def actorName = s"stats_updater_${UUID.randomUUID.toString}"
+  def actorName = s"stats_updater_${randomUUID}"
 
   def props(apiClient: ActorRef) = Props(classOf[StatsUpdater], apiClient)
 

@@ -1,6 +1,6 @@
 package core.actor
 
-import java.util.UUID
+import java.util.UUID.randomUUID
 
 import akka.actor.{Props, Actor, ActorRef, ActorLogging}
 import core.actor.StackOverflowApiClient.{Response, Get}
@@ -20,7 +20,7 @@ object TagStatsUpdater {
   case class TagPersisted(id: String)
   case class TagUpdated(tag: Tag)
 
-  def actorName(tagName: String) = s"tag_stats_updater_${UUID.randomUUID().toString}" // TODO find a way to encode tag name safely
+  def actorName(tagName: String) = s"tag_stats_updater_${randomUUID}" // TODO find a way to encode tag name safely
 
   def props(apiClient: ActorRef, tagName: String) = Props(classOf[TagStatsUpdater], apiClient, tagName)
 

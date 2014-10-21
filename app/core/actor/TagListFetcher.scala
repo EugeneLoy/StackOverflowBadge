@@ -1,9 +1,8 @@
 package core.actor
 
-import java.util.UUID
+import java.util.UUID.randomUUID
 
 import akka.actor.{Props, Actor, ActorLogging, ActorRef}
-import akka.remote.transport.ThrottlerTransportAdapter.Direction.Receive
 import core.actor.utils._
 import core.actor.StackOverflowApiClient.{Response, Get}
 import core.stackoverflow.StackOverflowApi._
@@ -12,7 +11,7 @@ object TagListFetcher {
 
   case class TagsFetched(tags: Seq[String])
 
-  def actorName = s"tag_list_fetcher_${UUID.randomUUID.toString}"
+  def actorName = s"tag_list_fetcher_${randomUUID}"
 
   def props(apiClient: ActorRef) = Props(classOf[TagListFetcher], apiClient)
 
