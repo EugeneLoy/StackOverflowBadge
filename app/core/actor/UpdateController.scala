@@ -13,10 +13,10 @@ object UpdateController {
 
 }
 
-class UpdateController extends Actor with ActorLogging with Subtasks {
+class UpdateController extends Actor with ActorLogging {
 
   val apiClient = context.watch(context.actorOf(StackOverflowApiClient.props, StackOverflowApiClient.ACTOR_NAME))
-  start(StatsUpdater.props(apiClient), StatsUpdater.actorName)
+  val statsUpdater = context.watch(context.actorOf(StatsUpdater.props(apiClient), StatsUpdater.ACTOR_NAME))
 
   // TODO configure guardian to restart on every exception https://groups.google.com/forum/#!topic/akka-user/QG_DL7FszMU
   override val supervisorStrategy = AllForOneStrategy() {
@@ -28,11 +28,6 @@ class UpdateController extends Actor with ActorLogging with Subtasks {
     super.preStart
   }
 
-  override def receive: Receive = {
-    case StatsUpdated() if subtasks contains sender =>
-      complete(sender)
-      log.info("Updating stats completed. Repeating update cycle.")
-      start(StatsUpdater.props(apiClient), StatsUpdater.actorName)
-  }
+  override def receive: Receive = Actor.emptyBehavior
 
 }

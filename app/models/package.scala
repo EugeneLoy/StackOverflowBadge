@@ -3,7 +3,7 @@ import org.joda.time.DateTime
 
 package object models {
 
-  case class Tag(_id: String, total: Long, accepted: Long, rate: Double, updated: DateTime)
+  case class Tag(_id: String, total: Long, accepted: Long, rate: Double, top: Long, updated: DateTime)
 
   case class RateTops(_id: String, top10: Double, top20: Double, top30: Double, top40: Double, top50: Double, updated: DateTime)
 

@@ -9,7 +9,7 @@ import core.stackoverflow.StackOverflowApi._
 
 object TagListFetcher {
 
-  case class TagsFetched(tags: Seq[String])
+  case class TagListFetched(tags: Set[String])
 
   def actorName = s"tag_list_fetcher_${randomUUID}"
 
@@ -42,7 +42,7 @@ class TagListFetcher(apiClient: ActorRef) extends Actor with ActorLogging with R
       tags ++= (content \ "items" \\ "name").map(_.as[String])
       pendingRequests -= id
       if (pendingRequests.isEmpty) {
-        context.parent ! TagsFetched(tags)
+        context.parent ! TagListFetched(tags.toSet)
         context.stop(self)
       }
   }
