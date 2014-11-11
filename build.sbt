@@ -22,3 +22,15 @@ libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-testkit"                  % akkaVersion        % "test",
   "org.scalatest"     %% "scalatest"                     % "2.2.2"            % "test"
 )
+
+scoverage.ScoverageSbtPlugin.instrumentSettings
+
+org.scoverage.coveralls.CoverallsPlugin.coverallsSettings
+
+ScoverageKeys.minimumCoverage := 10 // TODO tweak this
+
+ScoverageKeys.failOnMinimumCoverage := true
+
+ScoverageKeys.excludedPackages in ScoverageCompile := List(
+  "controllers\\..*"
+).mkString(";")
