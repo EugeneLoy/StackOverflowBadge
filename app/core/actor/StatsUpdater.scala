@@ -1,21 +1,9 @@
 package core.actor
 
 
-import akka.actor.{Props, ActorRef, Actor, ActorLogging}
-import akka.event.LoggingReceive
+import akka.actor.{Props, ActorRef, ActorLogging}
 import akka.persistence.{RecoveryCompleted, PersistentActor}
-import core.actor.TagListFetcher.TagListFetched
-import core.actor.TagPersister.TagsPersisted
-import core.actor.TagStatsUpdater.TagUpdated
-import core.actor.utils._
-import models.{Tag,RateTops}
-import org.joda.time.DateTime
-import play.modules.reactivemongo.ReactiveMongoPlugin.db
-import play.modules.reactivemongo.json.collection.JSONCollection
-import akka.pattern.pipe
-import play.api.libs.concurrent.Execution.Implicits.defaultContext
-import models.JsonFormats.rateTopsFormat
-import play.api.Play.current
+import models.Tag
 
 object StatsUpdater {
 
@@ -24,7 +12,7 @@ object StatsUpdater {
 
   def ACTOR_NAME = "stats_updater"
 
-  def props(apiClient: ActorRef) = Props(classOf[StatsUpdater], apiClient)
+  def props(apiClient: ActorRef) = Props(new StatsUpdater(apiClient))
 
   sealed trait Command
   sealed trait Event
@@ -46,7 +34,7 @@ class StatsUpdater(
   apiClient: ActorRef,
   _persistenceId: String = "stats_updater_persistence_id",
   tagListFetcherProps: ActorRef => Props = TagListFetcher.props,
-  tagFetcherProps: (ActorRef, String) => Props = TagStatsUpdater.props,
+  tagFetcherProps: (ActorRef, String) => Props = TagFetcher.props,
   tagPersisterProps: Set[Tag] => Props = TagPersister.props
 ) extends PersistentActor with ActorLogging {
 
@@ -113,7 +101,7 @@ class StatsUpdater(
   }
 
   def fetchingTags: Receive = {
-    case TagStatsUpdater.TagUpdated(tag) =>
+    case TagFetcher.TagFetched(tag) =>
       persist(TagFetched(tag)) { event =>
         pendingTags -= event.tag._id
         fetchedTags += event.tag
@@ -133,7 +121,7 @@ class StatsUpdater(
   def startFetchingTags = {
     log.info(s"startFetchingTags invoked (fetched: ${fetchedTags.size}, pending: ${pendingTags.size})")
     pendingTags.foreach { tagName =>
-      context.actorOf(tagFetcherProps(apiClient, tagName), TagStatsUpdater.actorName(tagName))
+      context.actorOf(tagFetcherProps(apiClient, tagName), TagFetcher.actorName(tagName))
     }
     checkPendingTags
   }
@@ -167,6 +155,7 @@ class StatsUpdater(
 
   // TODO watching
   // TODO handle stale children
+  // TODO handle unhandled
 
 }
 

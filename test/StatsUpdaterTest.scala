@@ -5,7 +5,7 @@ import core.actor.StatsUpdater
 import core.actor.StatsUpdater.FetchingTagListStarted
 import core.actor.TagListFetcher.TagListFetched
 import core.actor.TagPersister.TagsPersisted
-import core.actor.TagStatsUpdater.TagUpdated
+import core.actor.TagFetcher.TagFetched
 import models.Tag
 import org.joda.time.DateTime
 import org.scalatest.{Matchers, WordSpecLike}
@@ -150,7 +150,7 @@ class StatsUpdaterTest(_system: ActorSystem) extends ActorTest(_system) with Wor
           _persistenceId = persistenceId,
           tagListFetcherProps = _ => sendToParentWhenCreated(TagListFetched(Set("tag1", "tag2"))),
           tagFetcherProps = (_, tagName) => tagName match {
-            case "tag1" => sendToParentWhenCreated(TagUpdated(Tag("tag1", 0, 0, 0, 0, DateTime.now)))
+            case "tag1" => sendToParentWhenCreated(TagFetched(Tag("tag1", 0, 0, 0, 0, DateTime.now)))
             case "tag2" => sendToTestActorWhenCreated(tagName)
           }
         )))
@@ -184,7 +184,7 @@ class StatsUpdaterTest(_system: ActorSystem) extends ActorTest(_system) with Wor
           apiClient = system.actorOf(dummy),
           _persistenceId = randomUUID().toString,
           tagListFetcherProps = _ => sendToParentWhenCreated(TagListFetched(Fixture.fetchedTags.keySet)),
-          tagFetcherProps = (_, tagName) => sendToParentWhenCreated(TagUpdated(Fixture.fetchedTags(tagName))),
+          tagFetcherProps = (_, tagName) => sendToParentWhenCreated(TagFetched(Fixture.fetchedTags(tagName))),
           tagPersisterProps = tags => sendToTestActorWhenCreated(tags)
         ))
         system.actorOf(statsUpdaterProps)
@@ -203,7 +203,7 @@ class StatsUpdaterTest(_system: ActorSystem) extends ActorTest(_system) with Wor
           apiClient = system.actorOf(dummy),
           _persistenceId = persistenceId,
           tagListFetcherProps = _ => sendToParentWhenCreated(TagListFetched(Fixture.fetchedTags.keySet)),
-          tagFetcherProps = (_, tagName) => sendToParentWhenCreated(TagUpdated(Fixture.fetchedTags(tagName))),
+          tagFetcherProps = (_, tagName) => sendToParentWhenCreated(TagFetched(Fixture.fetchedTags(tagName))),
           tagPersisterProps = tags => sendToTestActorWhenCreated(tags)
         )))
 
@@ -253,7 +253,7 @@ class StatsUpdaterTest(_system: ActorSystem) extends ActorTest(_system) with Wor
           apiClient = system.actorOf(dummy),
           _persistenceId = _persistenceId,
           tagListFetcherProps = _ => Props(new TagListFetcherMock),
-          tagFetcherProps = (_, tagName) => sendToParentWhenCreated(TagUpdated(Fixture.fetchedTags(tagName))),
+          tagFetcherProps = (_, tagName) => sendToParentWhenCreated(TagFetched(Fixture.fetchedTags(tagName))),
           tagPersisterProps = _ => sendToParentWhenCreated(TagsPersisted)
         ))
         val statsUpdater = system.actorOf(statsUpdaterProps)

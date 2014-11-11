@@ -1,7 +1,7 @@
 package core
 
 import akka.actor.{Actor, ActorRef, Props}
-import core.actor.{StatsUpdater, TagStatsUpdater, StackOverflowApiClient, TagListFetcher}
+import core.actor.{StatsUpdater, TagFetcher, StackOverflowApiClient, TagListFetcher}
 import concurrent.duration._
 import scala.concurrent.Await
 
