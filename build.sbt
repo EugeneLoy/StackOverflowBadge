@@ -32,5 +32,6 @@ ScoverageKeys.minimumCoverage := 10 // TODO tweak this
 ScoverageKeys.failOnMinimumCoverage := true
 
 ScoverageKeys.excludedPackages in ScoverageCompile := List(
+  "<empty>",
   "controllers\\..*"
 ).mkString(";")
