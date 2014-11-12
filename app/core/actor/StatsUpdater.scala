@@ -3,6 +3,7 @@ package core.actor
 
 import akka.actor.{Props, ActorRef, ActorLogging}
 import akka.persistence.{RecoveryCompleted, PersistentActor}
+import core.actor.utils.RestartLogging
 import models.Tag
 
 object StatsUpdater {
@@ -36,7 +37,7 @@ class StatsUpdater(
   tagListFetcherProps: ActorRef => Props = TagListFetcher.props,
   tagFetcherProps: (ActorRef, String) => Props = TagFetcher.props,
   tagPersisterProps: Set[Tag] => Props = TagPersister.props
-) extends PersistentActor with ActorLogging {
+) extends PersistentActor with RestartLogging {
 
   import StatsUpdater._
 

@@ -23,7 +23,7 @@ object TagPersister {
 
 }
 
-class TagPersister(tags: Set[Tag]) extends Actor with ActorLogging with RandomIdGenerator {
+class TagPersister(tags: Set[Tag]) extends Actor with RandomIdGenerator with RestartLogging {
 
   import TagPersister._
   import context.dispatcher

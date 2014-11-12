@@ -4,6 +4,7 @@ import akka.actor._
 import akka.contrib.throttle.TimerBasedThrottler
 import akka.dispatch.{UnboundedPriorityMailbox, PriorityGenerator}
 import com.typesafe.config.Config
+import core.actor.utils.RestartLogging
 import core.stackoverflow.StackOverflowApi
 import play.api.Logger
 import scala.concurrent.duration._
@@ -40,7 +41,8 @@ object StackOverflowApiClient {
 }
 
 
-class StackOverflowApiClient(api: StackOverflowApi, requestRate: Rate, backoffDuration: FiniteDuration) extends Actor with FSM[StackOverflowApiClient.State, Unit] with Stash {
+class StackOverflowApiClient(api: StackOverflowApi, requestRate: Rate, backoffDuration: FiniteDuration)
+  extends Actor with FSM[StackOverflowApiClient.State, Unit] with Stash with RestartLogging {
 
   import StackOverflowApiClient._
 

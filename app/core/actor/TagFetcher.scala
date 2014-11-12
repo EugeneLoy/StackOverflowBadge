@@ -19,7 +19,7 @@ object TagFetcher {
 
 }
 
-class TagFetcher(apiClient: ActorRef, tagName: String) extends Actor with ActorLogging with RandomIdGenerator {
+class TagFetcher(apiClient: ActorRef, tagName: String) extends Actor with RandomIdGenerator with RestartLogging {
 
   import TagFetcher._
 
