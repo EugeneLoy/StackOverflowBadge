@@ -1,6 +1,6 @@
 package core.actor
 
-import akka.actor.SupervisorStrategy.Escalate
+import akka.actor.SupervisorStrategy.{Restart, Escalate}
 import akka.actor._
 import core.actor.StatsUpdater.StatsUpdated
 import core.actor.utils.Subtasks
@@ -21,11 +21,6 @@ class UpdateController extends Actor with ActorLogging {
   // TODO configure guardian to restart on every exception https://groups.google.com/forum/#!topic/akka-user/QG_DL7FszMU
   override val supervisorStrategy = AllForOneStrategy() {
     case _: Exception => Escalate
-  }
-
-  override def preStart = {
-    log.info("About to start update controller")
-    super.preStart
   }
 
   override def receive: Receive = Actor.emptyBehavior

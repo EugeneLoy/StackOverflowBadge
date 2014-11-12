@@ -15,12 +15,14 @@ libraryDependencies ++= Seq(
   anorm,
   cache,
   ws,
-  "com.typesafe.akka" %% "akka-contrib"                  % akkaVersion,
-  "com.typesafe.akka" %% "akka-persistence-experimental" % akkaVersion,
-  "org.iq80.leveldb"  %  "leveldb"                       % "0.7", // see: https://github.com/akka/akka/issues/15129
-  "org.reactivemongo" %% "play2-reactivemongo"           % "0.10.5.0.akka23",
-  "com.typesafe.akka" %% "akka-testkit"                  % akkaVersion        % "test",
-  "org.scalatest"     %% "scalatest"                     % "2.2.2"            % "test"
+  "com.typesafe.akka"      %% "akka-contrib"                  % akkaVersion,
+  "com.typesafe.akka"      %% "akka-persistence-experimental" % akkaVersion,
+  "org.iq80.leveldb"       %  "leveldb"                       % "0.7", // see: https://github.com/akka/akka/issues/15129
+  "org.reactivemongo"      %% "play2-reactivemongo"           % "0.10.5.0.akka23",
+  "com.github.scullxbones" %% "akka-persistence-mongo-casbah" % "0.1.2",
+  "org.mongodb"            %% "casbah"                        % "2.7.1",
+  "com.typesafe.akka"      %% "akka-testkit"                  % akkaVersion        % "test",
+  "org.scalatest"          %% "scalatest"                     % "2.2.2"            % "test"
 )
 
 scoverage.ScoverageSbtPlugin.instrumentSettings
