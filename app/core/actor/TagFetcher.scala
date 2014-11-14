@@ -2,7 +2,7 @@ package core.actor
 
 import java.util.UUID.randomUUID
 
-import akka.actor.{Props, Actor, ActorRef, ActorLogging}
+import akka.actor._
 import core.actor.StackOverflowApiClient.{Response, Get}
 import core.actor.utils._
 import core.stackoverflow.StackOverflowApi._
@@ -42,6 +42,7 @@ class TagFetcher(apiClient: ActorRef, tagName: String) extends Actor with Random
         updated = DateTime.now
       )
       context.parent ! TagFetched(updatedTag)
+      context.stop(self)
   }
 
   override def unhandled(message: Any) = {

@@ -28,7 +28,7 @@ class TagPersister(tags: Set[Tag]) extends Actor with RandomIdGenerator with Res
   import TagPersister._
   import context.dispatcher
 
-  def collection: JSONCollection = db.collection[JSONCollection]("tag")
+  val collection: JSONCollection = db.collection[JSONCollection]("tag")
 
   val saveStatuses = tags.map(collection.save(_).withFilter(!_.inError))
   Future.sequence(saveStatuses).map(_ => TagsPersisted).pipeTo(self)
@@ -36,6 +36,7 @@ class TagPersister(tags: Set[Tag]) extends Actor with RandomIdGenerator with Res
   override def receive: Receive = {
     case TagsPersisted =>
       context.parent ! TagsPersisted
+      context.stop(self)
   }
 
   override def unhandled(message: Any) = {

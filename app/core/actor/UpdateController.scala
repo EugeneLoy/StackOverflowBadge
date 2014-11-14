@@ -18,9 +18,8 @@ class UpdateController extends Actor with RestartLogging {
   val apiClient = context.watch(context.actorOf(StackOverflowApiClient.props, StackOverflowApiClient.ACTOR_NAME))
   val statsUpdater = context.watch(context.actorOf(StatsUpdater.props(apiClient), StatsUpdater.ACTOR_NAME))
 
-  // TODO configure guardian to restart on every exception https://groups.google.com/forum/#!topic/akka-user/QG_DL7FszMU
   override val supervisorStrategy = AllForOneStrategy() {
-    case _: Exception => Escalate
+    case _: Exception => Restart
   }
 
   override def receive: Receive = Actor.emptyBehavior

@@ -1,4 +1,4 @@
-import akka.actor.{Actor, Props, ActorSystem}
+import akka.actor.{PoisonPill, Actor, Props, ActorSystem}
 import akka.persistence.{RecoveryCompleted, PersistentActor}
 import com.typesafe.config.ConfigFactory
 import core.actor.StatsUpdater
@@ -20,6 +20,7 @@ class StatsUpdaterTest(_system: ActorSystem) extends ActorTest(_system) with Wor
     |akka.persistence.journal.leveldb.dir = "target/journal"
     |akka.persistence.journal.leveldb.native = off
     |akka.test.timefactor = 2
+    |akka.actor.guardian-supervisor-strategy = "akka.actor.StoppingSupervisorStrategy"
     |""".stripMargin
   ))))
 
@@ -59,12 +60,12 @@ class StatsUpdaterTest(_system: ActorSystem) extends ActorTest(_system) with Wor
         val statsUpdaterProps = Props(new StatsUpdater(
           apiClient = system.actorOf(dummy),
           _persistenceId = randomUUID().toString,
-          tagListFetcherProps = _ => sendToTestActorWhenCreated("created")
+          tagListFetcherProps = _ => sendToTestActorWhenCreated("tag list fetcher created")
         ))
         system.actorOf(statsUpdaterProps)
 
         within(commonTimeout) {
-          expectMsg("created")
+          expectMsg("tag list fetcher created")
           expectNoMsg
         }
       }
@@ -76,12 +77,12 @@ class StatsUpdaterTest(_system: ActorSystem) extends ActorTest(_system) with Wor
         val statsUpdaterProps = Props(new StatsUpdater(
           apiClient = system.actorOf(dummy),
           _persistenceId = persistenceId,
-          tagListFetcherProps = _ => sendToTestActorWhenCreated("created")
+          tagListFetcherProps = _ => sendToTestActorWhenCreated("tag list fetcher created")
         ))
         var statsUpdater = system.actorOf(statsUpdaterProps)
 
         within(commonTimeout) {
-          expectMsg("created")
+          expectMsg("tag list fetcher created")
           expectNoMsg
         }
 
@@ -89,7 +90,7 @@ class StatsUpdaterTest(_system: ActorSystem) extends ActorTest(_system) with Wor
         statsUpdater = system.actorOf(statsUpdaterProps)
 
         within(commonTimeout) {
-          expectMsg("created")
+          expectMsg("tag list fetcher created")
           expectNoMsg
         }
       }
@@ -274,5 +275,43 @@ class StatsUpdaterTest(_system: ActorSystem) extends ActorTest(_system) with Wor
         }
       }
     }
+
+    "operating normally" should {
+      "update stats over and over again" in {
+        class TagListFetcherMock extends Actor {
+          context.parent ! TagListFetched(Fixture.fetchedTags.keySet)
+          self ! PoisonPill
+          def receive = { case _: Any => }
+        }
+
+        class TagFetcherMock(tag: String) extends Actor {
+          context.parent ! TagFetched(Fixture.fetchedTags(tag))
+          self ! PoisonPill
+          def receive = { case _: Any => }
+        }
+
+        class TagPersisterMock extends Actor {
+          context.parent ! TagsPersisted
+          self ! PoisonPill
+          testActor ! "tags persisted"
+          def receive = { case _: Any => }
+        }
+
+        val statsUpdaterProps = Props(new StatsUpdater(
+          apiClient = system.actorOf(dummy),
+          _persistenceId = randomUUID().toString,
+          tagListFetcherProps = _ => Props(new TagListFetcherMock),
+          tagFetcherProps = (_, tagName) => Props(new TagFetcherMock(tagName)),
+          tagPersisterProps = _ => Props(new TagPersisterMock)
+        ))
+        val statsUpdater = system.actorOf(statsUpdaterProps)
+        watch(statsUpdater)
+
+        for (_ <- (1 to 100)) expectMsg(commonTimeout, "tags persisted")
+
+        system.stop(statsUpdater)
+      }
+    }
+
   }
 }

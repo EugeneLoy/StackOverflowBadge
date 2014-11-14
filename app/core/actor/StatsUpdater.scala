@@ -1,9 +1,9 @@
 package core.actor
 
 
-import akka.actor.{Props, ActorRef, ActorLogging}
+import akka.actor.{Terminated, Props, ActorRef}
 import akka.persistence.{RecoveryCompleted, PersistentActor}
-import core.actor.utils.RestartLogging
+import core.actor.utils._
 import models.Tag
 
 object StatsUpdater {
@@ -37,7 +37,7 @@ class StatsUpdater(
   tagListFetcherProps: ActorRef => Props = TagListFetcher.props,
   tagFetcherProps: (ActorRef, String) => Props = TagFetcher.props,
   tagPersisterProps: Set[Tag] => Props = TagPersister.props
-) extends PersistentActor with RestartLogging {
+) extends PersistentActor with Subtasks with  RestartLogging {
 
   import StatsUpdater._
 
@@ -45,6 +45,8 @@ class StatsUpdater(
 
   var pendingTags = Set.empty[String]
   var fetchedTags = Set.empty[Tag]
+
+  context.watch(apiClient)
 
   override def receiveRecover: Receive = {
     case e @ FetchingTagListStarted =>
@@ -82,14 +84,15 @@ class StatsUpdater(
   }
 
   def fetchingTagList: Receive = {
-    case TagListFetcher.TagListFetched(tags) =>
+    case TagListFetcher.TagListFetched(tags) if subtasks contains sender =>
       log.info(s"tag list fetched, size: ${tags.size}")
+      complete(sender)
       fetchTags(tags)
     case Recover =>
       startFetchingTagList
   }
 
-  def startFetchingTagList = context.actorOf(tagListFetcherProps(apiClient), TagListFetcher.actorName)
+  def startFetchingTagList = start(tagListFetcherProps(apiClient), TagListFetcher.actorName)
 
   def fetchTags(tags: Set[String]) = {
     log.info("fetchTags invoked")
@@ -102,7 +105,9 @@ class StatsUpdater(
   }
 
   def fetchingTags: Receive = {
-    case TagFetcher.TagFetched(tag) =>
+    case TagFetcher.TagFetched(tag) if subtasks contains sender =>
+      complete(sender)
+      context.unwatch(sender)
       persist(TagFetched(tag)) { event =>
         pendingTags -= event.tag._id
         fetchedTags += event.tag
@@ -121,9 +126,7 @@ class StatsUpdater(
 
   def startFetchingTags = {
     log.info(s"startFetchingTags invoked (fetched: ${fetchedTags.size}, pending: ${pendingTags.size})")
-    pendingTags.foreach { tagName =>
-      context.actorOf(tagFetcherProps(apiClient, tagName), TagFetcher.actorName(tagName))
-    }
+    for (tag <- pendingTags) start(tagFetcherProps(apiClient, tag), TagFetcher.actorName(tag))
     checkPendingTags
   }
 
@@ -136,8 +139,9 @@ class StatsUpdater(
   }
 
   def updatingStats: Receive = {
-    case TagPersister.TagsPersisted =>
+    case TagPersister.TagsPersisted if subtasks contains sender =>
       log.info("tags persisted - erasing journal and restarting process")
+      complete(sender)
       deleteMessages(lastSequenceNr, true)
       fetchTagList
     case Recover =>
@@ -151,11 +155,22 @@ class StatsUpdater(
       tag <- fetchedTags
       (top, _) = tops.find(tag.rate > _._2).getOrElse((100, 0))
     } yield tag.copy(top = top)
-    context.actorOf(tagPersisterProps(tags), TagPersister.actorName)
+    start(tagPersisterProps(tags), TagPersister.actorName)
   }
 
-  // TODO watching
-  // TODO handle stale children
-  // TODO handle unhandled
+  override def unhandled(message: Any) = {
+    // PersistentActor does not always maintain death watch guarantees (Terminated may be delivered even despite
+    // unwatch has been called if watchee died while watcher was persisting event/running `persist` handler).
+    // The following hack will fix this by discarding irrelevant Terminated messages
+    val hack: PartialFunction[Any, Unit] = { case Terminated(actor) if !((subtasks + apiClient) contains actor) => }
+
+    val discardStale = discardUnhandled(log)(
+      classOf[TagListFetcher.TagListFetched],
+      classOf[TagFetcher.TagFetched],
+      TagPersister.TagsPersisted.getClass
+    )
+
+    (discardStale orElse hack orElse throwOnNonTerminated orElse PartialFunction(super.unhandled _))(message)
+  }
 
 }
