@@ -36,7 +36,7 @@ object StackOverflowApiClient {
 
   case class StopBackingOff()
 
-  def props = Props(classOf[StackOverflowApiClient], new StackOverflowApi, 1 msgsPer (500 milliseconds), 5 minutes)
+  def props = Props(classOf[StackOverflowApiClient], new StackOverflowApi, 1 msgsPer (1 second), 1 hour)
 
 }
 
