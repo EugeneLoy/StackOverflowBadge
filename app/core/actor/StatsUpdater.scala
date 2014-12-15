@@ -58,7 +58,8 @@ class StatsUpdater(
       fetchedTags = Set.empty
       context.become(fetchingTags)
     case e @ TagFetched(tag) =>
-      log.info(s"Recover: $e")
+      // TODO uncomment
+      //log.debug(s"Recover: $e")
       pendingTags -= tag._id
       fetchedTags += tag
     case e @ UpdatingStatsStarted =>
