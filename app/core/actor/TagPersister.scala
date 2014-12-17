@@ -2,16 +2,20 @@ package core.actor
 
 import java.util.UUID.randomUUID
 
-import akka.actor.{ActorLogging, Actor, Props}
+import akka.actor.{Actor, Props}
 import core.actor.utils._
 import models.Tag
+
 import play.modules.reactivemongo.ReactiveMongoPlugin._
-import play.modules.reactivemongo.json.collection.JSONCollection
 import play.api.Play.current
 import akka.pattern._
-import models.JsonFormats.tagFormat
 
-import scala.concurrent.Future
+import play.api.libs.json.Json
+import models.JsonFormats.tagFormat
+import play.modules.reactivemongo.json.BSONFormats._
+import reactivemongo.bson.{BSONArray, BSONDocument}
+import reactivemongo.core.commands.RawCommand
+
 
 object TagPersister {
 
@@ -28,10 +32,24 @@ class TagPersister(tags: Set[Tag]) extends Actor with RandomIdGenerator with Res
   import TagPersister._
   import context.dispatcher
 
-  val collection: JSONCollection = db.collection[JSONCollection]("tag")
+  val updateStatements = BSONArray(
+    for {
+      tag <- tags
+      tagBson = Json.toJson(tag).as[BSONDocument]
+    } yield BSONDocument(
+      "q" -> BSONDocument("_id" -> tag._id),
+      "u" -> tagBson,
+      "upsert" -> true
+    )
+  )
 
-  val saveStatuses = tags.map(collection.save(_).withFilter(!_.inError))
-  Future.sequence(saveStatuses).map(_ => TagsPersisted).pipeTo(self)
+  val updateCommand = BSONDocument(
+    "update" -> "tag",
+    "updates" -> updateStatements,
+    "ordered" -> true
+  )
+
+  db.command(RawCommand(updateCommand)).map(_ => TagsPersisted).pipeTo(self)
 
   override def receive: Receive = {
     case TagsPersisted =>
